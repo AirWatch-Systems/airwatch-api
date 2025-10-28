@@ -1,0 +1,95 @@
+### Teste de Registro - Sucesso (senhas iguais)
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "password": "MySecurePassword123!",
+  "confirmPassword": "MySecurePassword123!"
+}
+
+### Teste de Registro - Falha (senhas diferentes)
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Jane Smith",
+  "email": "jane.smith@example.com",
+  "password": "MySecurePassword123!",
+  "confirmPassword": "DifferentPassword456!"
+}
+
+### Teste de Registro - Falha (sem confirmação de senha)
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Bob Johnson",
+  "email": "bob.johnson@example.com",
+  "password": "MySecurePassword123!"
+}
+
+### Teste de Registro - Falha (senha muito curta)
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Alice Brown",
+  "email": "alice.brown@example.com",
+  "password": "Short1!",
+  "confirmPassword": "Short1!"
+}
+
+### Teste de Registro - Falha (email inválido)
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Charlie Wilson",
+  "email": "invalid-email",
+  "password": "MySecurePassword123!",
+  "confirmPassword": "MySecurePassword123!"
+}
+
+### Teste de Registro - Falha (nome muito curto)
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "A",
+  "email": "a@example.com",
+  "password": "MySecurePassword123!",
+  "confirmPassword": "MySecurePassword123!"
+}
+
+### Teste de Registro - Falha (campos vazios)
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "",
+  "email": "",
+  "password": "",
+  "confirmPassword": ""
+}
+
+### Teste de Login - Após registro bem-sucedido
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com",
+  "password": "MySecurePassword123!"
+}
+
+### Teste de Verificação 2FA
+# Substitua {sessionId} pelo valor retornado do login
+# Substitua {code} pelo código 2FA gerado (verifique nos logs da aplicação)
+POST http://localhost:5000/api/auth/verify-2fa
+Content-Type: application/json
+
+{
+  "sessionId": "{sessionId}",
+  "token": "{code}"
+}

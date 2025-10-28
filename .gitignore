@@ -1,0 +1,103 @@
+# -----------------------------------------------------------------------------
+# AirWatch API (.NET 7) - .gitignore
+# -----------------------------------------------------------------------------
+# This file ignores build artifacts, user-specific settings, logs, secrets,
+# and other files that should not be committed to source control.
+#
+# NOTE:
+# - Do NOT ignore Entity Framework Core Migrations (keep them versioned).
+# - appsettings.json can be committed with non-sensitive defaults.
+#   Use environment variables for secrets in production.
+# -----------------------------------------------------------------------------
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+out/
+artifacts/
+publish/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code (workspace-specific; keep repo clean)
+.vscode/
+
+# Rider / IntelliJ
+.idea/
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+*.nuspec
+project.lock.json
+project.fragment.lock.json
+*.nuget.props
+*.nuget.targets
+
+# Logs
+Logs/
+*.log
+
+# Test results and coverage
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+
+# Publish profiles (environment-specific)
+Properties/PublishProfiles/
+*.pubxml
+*.pubxml.user
+
+# Local launch settings (environment-specific)
+Properties/launchSettings.json
+
+# Secrets and environment files
+.env
+.env.*
+secrets.json
+*.Secret.json
+firebase-service-account.json
+
+# App settings:
+# Keep appsettings.json (non-sensitive defaults).
+# Ignore environment-specific or local override files.
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+appsettings.*.Development.json
+
+# Databases (local)
+*.mdf
+*.ldf
+*.ndf
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / Misc
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Patches / merge leftovers
+*.orig
+*.rej
+
+# Swagger (runtime generated)
+swagger/
+swagger.json
+swagger/v1/swagger.json
