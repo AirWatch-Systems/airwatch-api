@@ -29,7 +29,8 @@ namespace AirWatch.Api.Controllers
         private readonly ILogger<AuthController> _logger;
 
         private const string CachePrefix = "auth:session:";
-        private static readonly TimeSpan TwoFaTtl = TimeSpan.FromMinutes(5);
+        private readonly TimeSpan _twoFaTtl;
+        private readonly TimeSpan _sessionTtl;
         private const int BcryptWorkFactor = 12; // A good default work factor for BCrypt
 
         public AuthController(
@@ -42,6 +43,13 @@ namespace AirWatch.Api.Controllers
             _config = config;
             _cache = cache;
             _logger = logger;
+            
+            // Configurar TTLs
+            var sessionTtlStr = Environment.GetEnvironmentVariable("SESSION_TTL_MINUTES") ?? _config["Auth:SessionTtlMinutes"];
+            var twoFaTtlStr = Environment.GetEnvironmentVariable("TWO_FA_TTL_MINUTES") ?? _config["Auth:TwoFaTtlMinutes"];
+            
+            _sessionTtl = TimeSpan.FromMinutes(int.TryParse(sessionTtlStr, out var sessionMin) ? sessionMin : 15);
+            _twoFaTtl = TimeSpan.FromMinutes(int.TryParse(twoFaTtlStr, out var twoFaMin) ? twoFaMin : 2);
         }
 
         /// <summary>
@@ -118,7 +126,7 @@ namespace AirWatch.Api.Controllers
             var code = GenerateNumericCode(6);
             var cacheKey = $"{CachePrefix}{sessionId}";
 
-            _cache.Set(cacheKey, new Pending2Fa(user.Id, code), TwoFaTtl);
+            _cache.Set(cacheKey, new Pending2Fa(user.Id, code, DateTime.UtcNow), _sessionTtl);
 
             // SECURITY: In a production environment, this code must be sent via a secure out-of-band channel
             // (e.g., SMS, email, or an authenticator app). Logging it is insecure and for development only.
@@ -149,6 +157,13 @@ namespace AirWatch.Api.Controllers
                 return Unauthorized(new ErrorResponse("Invalid or expired session"));
             }
 
+            // Verificar se o código expirou
+            if (DateTime.UtcNow - pending.CodeGeneratedAt > _twoFaTtl)
+            {
+                _logger.LogWarning("2FA code expired for session: {SessionId}, User: {UserId}", body.SessionId, pending.UserId);
+                return Unauthorized(new ErrorResponse("2FA code expired"));
+            }
+
             if (!string.Equals(pending.Code, body.Token, StringComparison.Ordinal))
             {
                 _logger.LogWarning("Invalid 2FA token provided for session: {SessionId}, User: {UserId}", body.SessionId, pending.UserId);
@@ -158,12 +173,45 @@ namespace AirWatch.Api.Controllers
             _cache.Remove(cacheKey);
             _logger.LogInformation("2FA verification successful for user: {UserId}", pending.UserId);
 
-            (string token, int expiresIn) = await GenerateJwtAsync(pending.UserId);
+            (string token, int expiresIn) = await GenerateTokenAsync(pending.UserId);
 
-            return Ok(new Verify2FaResponse(token, expiresIn));
+            return Ok(new Verify2FaResponse(token, "", expiresIn));
         }
 
-        private Task<(string token, int expiresIn)> GenerateJwtAsync(Guid userId)
+        /// <summary>
+        /// Resends the two-factor authentication code for an existing session.
+        /// </summary>
+        [HttpPost("resend-2fa")]
+        [AllowAnonymous]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
+        [ProducesResponseType(typeof(ErrorResponse), 401)]
+        public ActionResult Resend2Fa([FromBody] Resend2FaRequest body)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            var cacheKey = $"{CachePrefix}{body.SessionId}";
+            if (!_cache.TryGetValue<Pending2Fa>(cacheKey, out var pending) || pending == null)
+            {
+                _logger.LogWarning("2FA resend failed due to invalid or expired session: {SessionId}", body.SessionId);
+                return Unauthorized(new ErrorResponse("Invalid or expired session"));
+            }
+
+            var newCode = GenerateNumericCode(6);
+            var updatedPending = new Pending2Fa(pending.UserId, newCode, DateTime.UtcNow);
+            _cache.Set(cacheKey, updatedPending, _sessionTtl);
+
+            _logger.LogInformation("2FA code resent for session {SessionId}: {Code}. User: {UserId}", body.SessionId, newCode, pending.UserId);
+
+            return Ok();
+        }
+
+
+
+        private Task<(string token, int expiresIn)> GenerateTokenAsync(Guid userId)
         {
             var secret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? _config["Jwt:Secret"];
 
@@ -178,20 +226,28 @@ namespace AirWatch.Api.Controllers
                 throw new InvalidOperationException("JWT secret key is too short. It must be at least 32 characters long.");
             }
 
+            var expiresInMinutesStr = Environment.GetEnvironmentVariable("EXPIRES_IN_MINUTES") ?? _config["Jwt:ExpiresInMinutes"];
+            int expiresInMinutes = 480; // 8 horas
+            if (!string.IsNullOrWhiteSpace(expiresInMinutesStr) && int.TryParse(expiresInMinutesStr, out var parsedMinutes))
+            {
+                expiresInMinutes = parsedMinutes;
+            }
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var expires = DateTime.UtcNow.AddHours(1);
+            var expires = DateTime.UtcNow.AddMinutes(expiresInMinutes);
+            var jti = Guid.NewGuid().ToString("N");
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
+                new Claim(JwtRegisteredClaimNames.Jti, jti),
                 new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
             };
 
             var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"],
-                audience: _config["Jwt:Audience"],
+                issuer: Environment.GetEnvironmentVariable("JWT_ISSUER") ?? _config["Jwt:Issuer"],
+                audience: Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? _config["Jwt:Audience"],
                 claims: claims,
                 notBefore: DateTime.UtcNow.AddSeconds(-30),
                 expires: expires,
@@ -202,6 +258,8 @@ namespace AirWatch.Api.Controllers
 
             return Task.FromResult((jwt, expiresIn));
         }
+
+
 
         private static string GenerateNumericCode(int length)
         {

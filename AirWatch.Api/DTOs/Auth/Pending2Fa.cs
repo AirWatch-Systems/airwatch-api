@@ -8,4 +8,5 @@ namespace AirWatch.Api.DTOs.Auth;
 /// </summary>
 /// <param name="UserId">The ID of the user attempting to log in.</param>
 /// <param name="Code">The 2FA code sent to the user.</param>
-internal record Pending2Fa(Guid UserId, string Code);
+/// <param name="CodeGeneratedAt">When the code was generated.</param>
+internal record Pending2Fa(Guid UserId, string Code, DateTime CodeGeneratedAt);

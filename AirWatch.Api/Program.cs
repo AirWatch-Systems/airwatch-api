@@ -9,6 +9,7 @@ using Serilog;
 using Serilog.Events;
 using AirWatch.Api;
 using AirWatch.Api.Repositories;
+using AirWatch.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -86,7 +87,7 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "REST API for the Air Quality Monitoring System (AirWatch)"
     });
-    
+
     var securityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -126,6 +127,17 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 builder.Services.AddScoped<ISearchHistoryRepository, SearchHistoryRepository>();
 builder.Services.AddScoped<IPollutionCacheRepository, PollutionCacheRepository>();
+builder.Services.AddScoped<IOpenWeatherMapService, OpenWeatherMapService>();
+builder.Services.AddScoped<IGoogleMapsGeocodingService>(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient("GoogleMaps");
+    var apiKey = googleMapsKey;
+    return new GoogleMapsGeocodingService(
+        httpClient,
+        apiKey ?? throw new Exception("Google Maps API key is not configured.")
+    );
+});
 
 // CORS
 builder.Services.AddCors(options =>
@@ -280,5 +292,14 @@ app.MapControllers();
 // Simple health check
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
    .WithName("HealthCheck");
+
+// Root page with server status and Swagger link
+app.MapGet("/", async () =>
+{
+    var htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "index.html");
+    var htmlContent = await File.ReadAllTextAsync(htmlPath);
+    return Results.Content(htmlContent, "text/html; charset=utf-8");
+})
+.WithName("HomePage");
 
 app.Run();

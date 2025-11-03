@@ -9,6 +9,7 @@ using AirWatch.Api.DTOs.Common;
 using AirWatch.Api.DTOs.User;
 using AirWatch.Api.Models.Entities;
 using AirWatch.Api.Repositories;
+using AirWatch.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,13 +22,16 @@ namespace AirWatch.Api.Controllers
     {
         private readonly ISearchHistoryRepository _searchHistoryRepository;
         private readonly ILogger<LocationsController> _logger;
+        private readonly IGoogleMapsGeocodingService _geocodingService;
 
         public LocationsController(
             ISearchHistoryRepository searchHistoryRepository,
-            ILogger<LocationsController> logger)
+            ILogger<LocationsController> logger,
+            IGoogleMapsGeocodingService geocodingService)
         {
             _searchHistoryRepository = searchHistoryRepository;
             _logger = logger;
+            _geocodingService = geocodingService;
         }
 
         /// <summary>
@@ -46,36 +50,15 @@ namespace AirWatch.Api.Controllers
                 return await Task.FromResult(ValidationProblem(ModelState));
             }
 
-            // TODO: Integrate with external geocoding service (Google Maps, OpenStreetMap, etc.)
-            // For now, return mock data
-            var mockResults = new List<LocationResultDto>
-            {
-                new LocationResultDto
-                {
-                    Name = $"Resultado para '{request.Query}'",
-                    Latitude = -23.5505m,
-                    Longitude = -46.6333m,
-                    Address = "São Paulo, SP, Brasil",
-                    PlaceId = "mock_place_id_1"
-                },
-                new LocationResultDto
-                {
-                    Name = $"Outro resultado para '{request.Query}'",
-                    Latitude = -22.9068m,
-                    Longitude = -43.1729m,
-                    Address = "Rio de Janeiro, RJ, Brasil",
-                    PlaceId = "mock_place_id_2"
-                }
-            };
+            var results = await _geocodingService.SearchAsync(request.Query, ct);
 
-            // Log the search for analytics
             _logger.LogInformation("Location search performed for query: {Query}", request.Query);
 
             return Ok(new LocationSearchResponse
             {
                 Query = request.Query,
-                Results = mockResults,
-                Total = mockResults.Count
+                Results = results,
+                Total = results.Count
             });
         }
 

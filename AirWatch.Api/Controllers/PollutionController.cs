@@ -7,6 +7,7 @@ using AirWatch.Api.DTOs.Pollution;
 using AirWatch.Api.DTOs.Common;
 using AirWatch.Api.Models.Entities;
 using AirWatch.Api.Repositories;
+using AirWatch.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,13 +19,16 @@ namespace AirWatch.Api.Controllers
     public class PollutionController : ControllerBase
     {
         private readonly IPollutionCacheRepository _pollutionCacheRepository;
+        private readonly IOpenWeatherMapService _openWeatherMapService;
         private readonly ILogger<PollutionController> _logger;
 
         public PollutionController(
             IPollutionCacheRepository pollutionCacheRepository,
+            IOpenWeatherMapService openWeatherMapService,
             ILogger<PollutionController> logger)
         {
             _pollutionCacheRepository = pollutionCacheRepository;
+            _openWeatherMapService = openWeatherMapService;
             _logger = logger;
         }
 
@@ -72,9 +76,42 @@ namespace AirWatch.Api.Controllers
 
             if (pollutionData == null)
             {
-                _logger.LogWarning("No pollution data found for location ({Lat}, {Lon}) within {MaxAgeMinutes} minutes and {RadiusKm} km radius",
-                    lat, lon, maxAgeMinutes, radiusKm);
-                return NotFound(new ErrorResponse("No pollution data available for this location"));
+                // Try to fetch from OpenWeatherMap API
+                try
+                {
+                    var owmData = await _openWeatherMapService.GetCurrentPollutionAsync(lat, lon);
+                    if (owmData.List.Count > 0)
+                    {
+                        var data = owmData.List[0];
+                        pollutionData = new PollutionCache
+                        {
+                            Latitude = lat,
+                            Longitude = lon,
+                            AQI = data.Main.Aqi,
+                            PM25 = data.Components.Pm2_5,
+                            PM10 = data.Components.Pm10,
+                            CO = data.Components.Co,
+                            NO2 = data.Components.No2,
+                            SO2 = data.Components.So2,
+                            O3 = data.Components.O3,
+                            FetchedAt = DateTime.UtcNow
+                        };
+
+                        // Cache the data
+                        await _pollutionCacheRepository.AddAsync(pollutionData, ct);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to fetch pollution data from OpenWeatherMap API for location ({Lat}, {Lon})", lat, lon);
+                }
+
+                if (pollutionData == null)
+                {
+                    _logger.LogWarning("No pollution data found for location ({Lat}, {Lon}) within {MaxAgeMinutes} minutes and {RadiusKm} km radius",
+                        lat, lon, maxAgeMinutes, radiusKm);
+                    return NotFound(new ErrorResponse("No pollution data available for this location"));
+                }
             }
 
             var response = new PollutionCurrentResponse
@@ -118,6 +155,43 @@ namespace AirWatch.Api.Controllers
 
             var historyData = await _pollutionCacheRepository.GetHistoryAsync(
                 request.Lat, request.Lon, request.Hours, ct);
+
+            // If no cached history, try to fetch from OpenWeatherMap
+            if (!historyData.Any())
+            {
+                try
+                {
+                    var owmHistory = await _openWeatherMapService.GetPollutionHistoryAsync(request.Lat, request.Lon, request.Hours);
+                    if (owmHistory.List.Count > 0)
+                    {
+                        var newHistoryData = owmHistory.List.Select(data => new PollutionCache
+                        {
+                            Latitude = request.Lat,
+                            Longitude = request.Lon,
+                            AQI = data.Main.Aqi,
+                            PM25 = data.Components.Pm2_5,
+                            PM10 = data.Components.Pm10,
+                            CO = data.Components.Co,
+                            NO2 = data.Components.No2,
+                            SO2 = data.Components.So2,
+                            O3 = data.Components.O3,
+                            FetchedAt = data.GetDateTime()
+                        }).ToList();
+
+                        // Cache the history data
+                        foreach (var item in newHistoryData)
+                        {
+                            await _pollutionCacheRepository.AddAsync(item, ct);
+                        }
+
+                        historyData = newHistoryData;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to fetch pollution history from OpenWeatherMap API for location ({Lat}, {Lon})", request.Lat, request.Lon);
+                }
+            }
 
             var points = historyData.Select(p => new PollutionHistoryPointDto
             {

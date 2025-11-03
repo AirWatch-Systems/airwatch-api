@@ -8,6 +8,7 @@ using AirWatch.Api.DTOs.Common;
 using AirWatch.Api.DTOs.User;
 using AirWatch.Api.Models.Entities;
 using AirWatch.Api.Repositories;
+using BCrypt.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -240,6 +241,48 @@ namespace AirWatch.Api.Controllers
         }
 
         /// <summary>
+        /// Changes the current user's password.
+        /// </summary>
+        [HttpPost("change-password")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
+        [ProducesResponseType(typeof(ErrorResponse), 401)]
+        [ProducesResponseType(typeof(ErrorResponse), 404)]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            var userId = GetCurrentUserId();
+            if (userId == Guid.Empty)
+            {
+                return Unauthorized(new ErrorResponse("Invalid user authentication"));
+            }
+
+            var user = await _userRepository.GetByIdAsync(userId, ct);
+            if (user == null)
+            {
+                return NotFound(new ErrorResponse("User not found"));
+            }
+
+            if (!BCrypt.Net.BCrypt.EnhancedVerify(request.CurrentPassword, user.PasswordHash))
+            {
+                _logger.LogWarning("Invalid current password provided for user: {UserId}", userId);
+                return BadRequest(new ErrorResponse("Current password is incorrect"));
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.EnhancedHashPassword(request.NewPassword, 12);
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _userRepository.UpdateAsync(user, ct);
+            _logger.LogInformation("Password changed successfully for user: {UserId}", userId);
+
+            return Ok(new { message = "Password changed successfully" });
+        }
+
+        /// <summary>
         /// Deletes the current user's account and all associated data.
         /// </summary>
         [HttpDelete("account")]
@@ -280,47 +323,5 @@ namespace AirWatch.Api.Controllers
             }
             return Guid.Empty;
         }
-    }
-
-    // Additional DTOs for user operations
-    public class UserProfileResponse
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-    }
-
-    public class UserUpdateRequest
-    {
-        public string? Name { get; set; }
-    }
-
-    public class UserFeedbackItemDto
-    {
-        public Guid Id { get; set; }
-        public decimal Latitude { get; set; }
-        public decimal Longitude { get; set; }
-        public int Rating { get; set; }
-        public string? Comment { get; set; }
-        public DateTime CreatedAt { get; set; }
-    }
-
-    public class UserFeedbackResponse
-    {
-        public List<UserFeedbackItemDto> Items { get; set; } = new();
-        public int Total { get; set; }
-        public int Skip { get; set; }
-        public int Take { get; set; }
-    }
-
-    public class UserStatsResponse
-    {
-        public int TotalSearches { get; set; }
-        public int TotalFeedbacks { get; set; }
-        public double AverageRating { get; set; }
-        public int DaysSinceRegistration { get; set; }
-        public DateTime? LastActivity { get; set; }
     }
 }

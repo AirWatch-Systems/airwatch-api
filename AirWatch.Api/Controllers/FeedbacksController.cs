@@ -39,6 +39,7 @@ namespace AirWatch.Api.Controllers
         [ProducesResponseType(typeof(FeedbackCreateResponse), 201)]
         [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
         [ProducesResponseType(typeof(ErrorResponse), 401)]
+        [ProducesResponseType(typeof(ErrorResponse), 429)]
         public async Task<ActionResult<FeedbackCreateResponse>> CreateFeedback(
             [FromBody] FeedbackCreateRequest request,
             CancellationToken ct)
@@ -52,6 +53,23 @@ namespace AirWatch.Api.Controllers
             if (userId == Guid.Empty)
             {
                 return Unauthorized(new ErrorResponse("Invalid user authentication"));
+            }
+
+            // Check if user has submitted feedback in this region within the last 4 hours
+            var lastFeedback = await _feedbackRepository.GetLatestByUserInRegionAsync(
+                userId, request.Lat, request.Lon, 1.0, ct); // 1km radius
+
+            if (lastFeedback != null)
+            {
+                var timeSinceLastFeedback = DateTime.UtcNow - lastFeedback.CreatedAt;
+                if (timeSinceLastFeedback.TotalHours < 4)
+                {
+                    var remainingTime = TimeSpan.FromHours(4) - timeSinceLastFeedback;
+                    var remainingMinutes = (int)Math.Ceiling(remainingTime.TotalMinutes);
+                    
+                    return StatusCode(429, new ErrorResponse(
+                        $"Você já enviou um feedback nesta região recentemente. Tente novamente em {remainingMinutes} minutos."));
+                }
             }
 
             var feedback = new Feedback
