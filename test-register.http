@@ -93,3 +93,83 @@ Content-Type: application/json
   "sessionId": "{sessionId}",
   "token": "{code}"
 }
+
+### Teste de Refresh Token
+# Substitua {refreshToken} pelo valor retornado do verify-2fa
+POST http://localhost:5000/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{refreshToken}"
+}
+
+### Teste de Reenvio 2FA
+# Substitua {sessionId} pelo valor retornado do login
+POST http://localhost:5000/api/auth/resend-2fa
+Content-Type: application/json
+
+{
+  "sessionId": "{sessionId}"
+}
+
+### Teste de Busca de Localização
+# Substitua {accessToken} pelo token JWT válido
+GET http://localhost:5000/api/locations/search?q=São Paulo&limit=5
+Authorization: Bearer {accessToken}
+
+### Teste de Criação de Feedback
+# Substitua {accessToken} pelo token JWT válido
+POST http://localhost:5000/api/feedbacks
+Content-Type: application/json
+Authorization: Bearer {accessToken}
+
+{
+  "lat": -23.5505,
+  "lon": -46.6333,
+  "rating": 4,
+  "comment": "Qualidade do ar boa hoje em São Paulo"
+}
+
+### Teste de Listagem de Feedbacks do Usuário
+# Substitua {accessToken} pelo token JWT válido
+GET http://localhost:5000/api/feedbacks/my?skip=0&take=10
+Authorization: Bearer {accessToken}
+
+### Teste de Feedbacks por Localização
+# Substitua {accessToken} pelo token JWT válido
+GET http://localhost:5000/api/feedbacks/near?lat=-23.5505&lon=-46.6333&radius=5&hours=24
+Authorization: Bearer {accessToken}
+
+### Teste de Dados de Poluição Atual
+# Substitua {accessToken} pelo token JWT válido
+GET http://localhost:5000/api/pollution/current?lat=-23.5505&lon=-46.6333
+Authorization: Bearer {accessToken}
+
+### Teste de Histórico de Poluição
+# Substitua {accessToken} pelo token JWT válido
+GET http://localhost:5000/api/pollution/history?lat=-23.5505&lon=-46.6333&hours=24
+Authorization: Bearer {accessToken}
+
+### Teste de Perfil do Usuário
+# Substitua {accessToken} pelo token JWT válido
+GET http://localhost:5000/api/user/profile
+Authorization: Bearer {accessToken}
+
+### Teste de Histórico de Busca
+# Substitua {accessToken} pelo token JWT válido
+GET http://localhost:5000/api/locations/search-history?skip=0&take=10
+Authorization: Bearer {accessToken}
+
+### Teste de Erro - Feedback muito cedo (validação 4 horas)
+# Substitua {accessToken} pelo token JWT válido
+# Execute após já ter criado um feedback na mesma região
+POST http://localhost:5000/api/feedbacks
+Content-Type: application/json
+Authorization: Bearer {accessToken}
+
+{
+  "lat": -23.5505,
+  "lon": -46.6333,
+  "rating": 3,
+  "comment": "Tentativa de feedback muito cedo"
+}
