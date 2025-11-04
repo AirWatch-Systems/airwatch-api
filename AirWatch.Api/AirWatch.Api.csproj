@@ -39,8 +39,7 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
 
-    <!-- Firebase (Auth 2FA / FCM) -->
-    <PackageReference Include="FirebaseAdmin" Version="2.4.0" />
+
   </ItemGroup>
 
 </Project>
