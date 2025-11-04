@@ -1,12 +1,9 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using AirWatch.Api.DTOs.Common;
 using AirWatch.Api.DTOs.User;
-using AirWatch.Api.Models.Entities;
 using AirWatch.Api.Repositories;
 using BCrypt.Net;
 using Microsoft.AspNetCore.Authorization;
@@ -20,19 +17,13 @@ namespace AirWatch.Api.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserRepository _userRepository;
-        private readonly ISearchHistoryRepository _searchHistoryRepository;
-        private readonly IFeedbackRepository _feedbackRepository;
         private readonly ILogger<UserController> _logger;
 
         public UserController(
             IUserRepository userRepository,
-            ISearchHistoryRepository searchHistoryRepository,
-            IFeedbackRepository feedbackRepository,
             ILogger<UserController> logger)
         {
             _userRepository = userRepository;
-            _searchHistoryRepository = searchHistoryRepository;
-            _feedbackRepository = feedbackRepository;
             _logger = logger;
         }
 
@@ -118,86 +109,7 @@ namespace AirWatch.Api.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Gets the current user's search history.
-        /// </summary>
-        [HttpGet("search-history")]
-        [ProducesResponseType(typeof(UserHistoryResponse), 200)]
-        [ProducesResponseType(typeof(ErrorResponse), 401)]
-        public async Task<ActionResult<UserHistoryResponse>> GetSearchHistory(
-            [FromQuery] int skip = 0,
-            [FromQuery] int take = 50,
-            CancellationToken ct = default)
-        {
-            var userId = GetCurrentUserId();
-            if (userId == Guid.Empty)
-            {
-                return Unauthorized(new ErrorResponse("Invalid user authentication"));
-            }
 
-            skip = Math.Max(0, skip);
-            take = Math.Clamp(take, 1, 100);
-
-            var searchHistory = await _searchHistoryRepository.GetByUserAsync(userId, skip, take, ct);
-
-            var items = searchHistory.Select(s => new UserSearchHistoryItemDto
-            {
-                Id = s.Id,
-                LocationName = s.LocationName,
-                Latitude = s.Latitude,
-                Longitude = s.Longitude,
-                SearchedAt = s.SearchedAt
-            }).ToList();
-
-            return Ok(new UserHistoryResponse
-            {
-                Items = items,
-                Total = items.Count,
-                Skip = skip,
-                Take = take
-            });
-        }
-
-        /// <summary>
-        /// Gets the current user's feedback history.
-        /// </summary>
-        [HttpGet("feedbacks")]
-        [ProducesResponseType(typeof(UserFeedbackResponse), 200)]
-        [ProducesResponseType(typeof(ErrorResponse), 401)]
-        public async Task<ActionResult<UserFeedbackResponse>> GetUserFeedbacks(
-            [FromQuery] int skip = 0,
-            [FromQuery] int take = 50,
-            CancellationToken ct = default)
-        {
-            var userId = GetCurrentUserId();
-            if (userId == Guid.Empty)
-            {
-                return Unauthorized(new ErrorResponse("Invalid user authentication"));
-            }
-
-            skip = Math.Max(0, skip);
-            take = Math.Clamp(take, 1, 100);
-
-            var feedbacks = await _feedbackRepository.GetByUserAsync(userId, skip, take, ct);
-
-            var items = feedbacks.Select(f => new UserFeedbackItemDto
-            {
-                Id = f.Id,
-                Latitude = f.Latitude,
-                Longitude = f.Longitude,
-                Rating = f.Rating,
-                Comment = f.Comment,
-                CreatedAt = f.CreatedAt
-            }).ToList();
-
-            return Ok(new UserFeedbackResponse
-            {
-                Items = items,
-                Total = items.Count,
-                Skip = skip,
-                Take = take
-            });
-        }
 
         /// <summary>
         /// Gets user statistics and activity summary.
@@ -213,28 +125,16 @@ namespace AirWatch.Api.Controllers
                 return Unauthorized(new ErrorResponse("Invalid user authentication"));
             }
 
-            // Get user's search history count
-            var searchHistory = await _searchHistoryRepository.GetByUserAsync(userId, 0, int.MaxValue, ct);
-            var searchCount = searchHistory.Count;
-
-            // Get user's feedback count
-            var feedbacks = await _feedbackRepository.GetByUserAsync(userId, 0, int.MaxValue, ct);
-            var feedbackCount = feedbacks.Count;
-
-            // Calculate average rating
-            var averageRating = feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0;
-
-            // Get user creation date
             var user = await _userRepository.GetByIdAsync(userId, ct);
             var daysSinceRegistration = user != null ? (DateTime.UtcNow - user.CreatedAt).Days : 0;
 
             var response = new UserStatsResponse
             {
-                TotalSearches = searchCount,
-                TotalFeedbacks = feedbackCount,
-                AverageRating = Math.Round(averageRating, 2),
+                TotalSearches = 0,
+                TotalFeedbacks = 0,
+                AverageRating = 0,
                 DaysSinceRegistration = daysSinceRegistration,
-                LastActivity = searchHistory.Any() ? searchHistory.Max(s => s.SearchedAt) : user?.CreatedAt
+                LastActivity = user?.CreatedAt
             };
 
             return Ok(response);

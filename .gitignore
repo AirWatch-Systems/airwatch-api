@@ -72,8 +72,9 @@ secrets.json
 firebase-service-account.json
 
 # App settings:
-# Keep appsettings.json (non-sensitive defaults).
-# Ignore environment-specific or local override files.
+# Ignore main appsettings.json (contains sensitive data)
+# Keep appsettings.template.json (template without secrets)
+appsettings.json
 appsettings.Development.json
 appsettings.Local.json
 appsettings.*.local.json

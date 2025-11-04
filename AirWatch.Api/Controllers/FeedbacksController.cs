@@ -108,10 +108,12 @@ namespace AirWatch.Api.Controllers
                 return NotFound(new ErrorResponse("Feedback not found"));
             }
 
+            var user = await _userRepository.GetByIdAsync(feedback.UserId, ct);
             return Ok(new FeedbackItemDto
             {
                 Id = feedback.Id,
                 UserId = feedback.UserId,
+                UserName = user?.Name,
                 Latitude = feedback.Latitude,
                 Longitude = feedback.Longitude,
                 Rating = feedback.Rating,
@@ -141,10 +143,19 @@ namespace AirWatch.Api.Controllers
 
             var feedbacks = await _feedbackRepository.GetByUserAsync(userId, skipValue, takeValue, ct);
 
+            var userIds = feedbacks.Select(f => f.UserId).Distinct().ToList();
+            var users = new Dictionary<Guid, string>();
+            foreach (var uid in userIds)
+            {
+                var user = await _userRepository.GetByIdAsync(uid, ct);
+                if (user != null) users[uid] = user.Name;
+            }
+
             var items = feedbacks.Select(f => new FeedbackItemDto
             {
                 Id = f.Id,
                 UserId = f.UserId,
+                UserName = users.GetValueOrDefault(f.UserId),
                 Latitude = f.Latitude,
                 Longitude = f.Longitude,
                 Rating = f.Rating,
@@ -211,10 +222,19 @@ namespace AirWatch.Api.Controllers
             // Apply pagination
             var paginatedFeedbacks = feedbacks.Skip(skip).Take(take);
 
+            var userIds = paginatedFeedbacks.Select(f => f.UserId).Distinct().ToList();
+            var users = new Dictionary<Guid, string>();
+            foreach (var uid in userIds)
+            {
+                var user = await _userRepository.GetByIdAsync(uid, ct);
+                if (user != null) users[uid] = user.Name;
+            }
+
             var items = paginatedFeedbacks.Select(f => new FeedbackItemDto
             {
                 Id = f.Id,
                 UserId = f.UserId,
+                UserName = users.GetValueOrDefault(f.UserId),
                 Latitude = f.Latitude,
                 Longitude = f.Longitude,
                 Rating = f.Rating,

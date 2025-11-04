@@ -18,8 +18,6 @@ namespace AirWatch.Api.Models.Extensions
             // Apply all entity configurations
             modelBuilder.ApplyConfiguration(new UserConfiguration());
             modelBuilder.ApplyConfiguration(new FeedbackConfiguration());
-            modelBuilder.ApplyConfiguration(new SearchHistoryConfiguration());
-            modelBuilder.ApplyConfiguration(new PollutionCacheConfiguration());
 
             return modelBuilder;
         }

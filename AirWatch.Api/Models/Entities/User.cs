@@ -19,6 +19,5 @@ namespace AirWatch.Api.Models.Entities
 
         // Navigation properties
         public ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
-        public ICollection<SearchHistory> SearchHistories { get; set; } = new List<SearchHistory>();
     }
 }

@@ -23,8 +23,6 @@ namespace AirWatch.Api
         // DbSets
         public DbSet<User> Users => Set<User>();
         public DbSet<Feedback> Feedbacks => Set<Feedback>();
-        public DbSet<SearchHistory> SearchHistory => Set<SearchHistory>();
-        public DbSet<PollutionCache> PollutionCache => Set<PollutionCache>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -78,21 +76,7 @@ namespace AirWatch.Api
                 }
             }
 
-            foreach (var entry in ChangeTracker.Entries<SearchHistory>().Where(e => e.State == EntityState.Added))
-            {
-                if (entry.Entity.SearchedAt == default)
-                {
-                    entry.Entity.SearchedAt = now;
-                }
-            }
 
-            foreach (var entry in ChangeTracker.Entries<PollutionCache>().Where(e => e.State == EntityState.Added))
-            {
-                if (entry.Entity.FetchedAt == default)
-                {
-                    entry.Entity.FetchedAt = now;
-                }
-            }
         }
     }
 }

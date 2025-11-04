@@ -4,6 +4,7 @@ using AirWatch.Api;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AirWatch.Api.Migrations
 {
     [DbContext(typeof(AirWatchDbContext))]
-    partial class AirWatchDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251104002132_RemoveHistoryAndCacheTables")]
+    partial class RemoveHistoryAndCacheTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

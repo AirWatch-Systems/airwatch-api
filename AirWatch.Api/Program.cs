@@ -1,6 +1,4 @@
 using System.Text;
-using FirebaseAdmin;
-using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -61,10 +59,7 @@ var googleMapsKey =
     Environment.GetEnvironmentVariable("GOOGLE_MAPS_API_KEY") ??
     configuration["Google:MapsApiKey"];
 
-// Firebase credentials (JSON string)
-var firebaseCredentialsJson =
-    Environment.GetEnvironmentVariable("FIREBASE_CREDENTIALS") ??
-    configuration["Firebase:Credentials"];
+
 
 // ----------------------------
 // Services registration
@@ -125,8 +120,6 @@ builder.Services.AddMemoryCache();
 // Repositories (DI)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
-builder.Services.AddScoped<ISearchHistoryRepository, SearchHistoryRepository>();
-builder.Services.AddScoped<IPollutionCacheRepository, PollutionCacheRepository>();
 builder.Services.AddScoped<IOpenWeatherMapService, OpenWeatherMapService>();
 builder.Services.AddScoped<IGoogleMapsGeocodingService>(sp =>
 {
@@ -208,38 +201,7 @@ builder.Services.AddHttpClient("GoogleMaps", c =>
 // ----------------------------
 var app = builder.Build();
 
-// ----------------------------
-// Firebase initialization (comentado para desenvolvimento)
-// ----------------------------
-try
-{
-    if (FirebaseApp.DefaultInstance == null)
-    {
-        if (!string.IsNullOrWhiteSpace(firebaseCredentialsJson))
-        {
-            FirebaseApp.Create(new AppOptions
-            {
-                Credential = GoogleCredential.FromJson(firebaseCredentialsJson)
-            });
-            Log.Information("Firebase initialized using provided JSON credentials.");
-        }
-        else
-        {
-            // Try ADC (Application Default Credentials)
-            FirebaseApp.Create(new AppOptions
-            {
-                Credential = GoogleCredential.GetApplicationDefault()
-            });
-            Log.Information("Firebase initialized using application default credentials.");
-        }
-    }
-}
-catch (Exception ex)
-{
-    Log.Warning(ex, "Firebase initialization skipped or failed. 2FA/Push may not work until configured.");
-}
 
-Log.Information("Firebase initialization skipped for development. 2FA/Push features disabled.");
 
 // ----------------------------
 // Middleware pipeline
