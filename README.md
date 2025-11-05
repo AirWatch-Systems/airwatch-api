@@ -92,7 +92,6 @@ API RESTful desenvolvida em .NET 7 para monitoramento da qualidade do ar com aut
 
 - **OpenWeatherMap API** - Dados de qualidade do ar
 - **Google Maps Geocoding** - Busca de localizações
-- **Firebase Admin** - Autenticação 2FA (opcional)
 
 ### 🏛️ Padrões Arquiteturais
 
@@ -144,7 +143,6 @@ airwatch-api/
 |---------|------------|--------------|
 | **OpenWeatherMap** | [Criar conta gratuita](https://openweathermap.org/api) | [API Docs](https://openweathermap.org/api/air-pollution) |
 | **Google Maps** | [Google Cloud Console](https://console.cloud.google.com/) | [Geocoding API](https://developers.google.com/maps/documentation/geocoding) |
-| **Firebase** | [Firebase Console](https://console.firebase.google.com/) | [Admin SDK](https://firebase.google.com/docs/admin/setup) |
 
 ### 📝 Variáveis de Ambiente
 
@@ -155,14 +153,14 @@ $env:DATABASE_CONNECTION_STRING = "Server=localhost;Database=AirWatch;Trusted_Co
 $env:JWT_SECRET = "SuaChaveSecretaDeNoMinimo32Caracteres123456789"
 $env:OPENWEATHERMAP_API_KEY = "sua_chave_openweathermap"
 $env:GOOGLE_MAPS_API_KEY = "sua_chave_google_maps"
-$env:ALLOWED_ORIGINS = "http://localhost:19006,http://localhost:8081"
+$env:ALLOWED_ORIGINS = "http://localhost:8081,http://192.168.1.8:8081,exp://192.168.1.8:8081"
 
 # Configuração permanente (requer reiniciar terminal)
 setx DATABASE_CONNECTION_STRING "Server=localhost;Database=AirWatch;Trusted_Connection=True;TrustServerCertificate=True;"
 setx JWT_SECRET "SuaChaveSecretaDeNoMinimo32Caracteres123456789"
 setx OPENWEATHERMAP_API_KEY "sua_chave_openweathermap"
 setx GOOGLE_MAPS_API_KEY "sua_chave_google_maps"
-setx ALLOWED_ORIGINS "http://localhost:19006,http://localhost:8081"
+setx ALLOWED_ORIGINS "http://localhost:8081,http://192.168.1.8:8081,exp://192.168.1.8:8081"
 ```
 
 #### macOS/Linux (Bash)
@@ -172,7 +170,7 @@ export DATABASE_CONNECTION_STRING="Server=localhost;Database=AirWatch;User Id=sa
 export JWT_SECRET="SuaChaveSecretaDeNoMinimo32Caracteres123456789"
 export OPENWEATHERMAP_API_KEY="sua_chave_openweathermap"
 export GOOGLE_MAPS_API_KEY="sua_chave_google_maps"
-export ALLOWED_ORIGINS="http://localhost:19006,http://localhost:8081"
+export ALLOWED_ORIGINS="http://localhost:8081,http://192.168.1.8:8081,exp://192.168.1.8:8081"
 
 # Recarregar configurações
 source ~/.bashrc
@@ -194,17 +192,22 @@ source ~/.bashrc
   },
   "Jwt": {
     "Secret": "NUNCA_USE_EM_PRODUCAO_USE_ENV_VAR",
-    "ExpirationHours": 24
+    "Issuer": "AirWatch.Api",
+    "Audience": "AirWatch.Client",
+    "ExpiresInMinutes": 15
+  },
+  "Auth": {
+    "SessionTtlMinutes": 15,
+    "TwoFaTtlMinutes": 2
   },
   "OpenWeatherMap": {
-    "ApiKey": "USE_VARIAVEL_DE_AMBIENTE",
-    "BaseUrl": "https://api.openweathermap.org/data/2.5/"
+    "ApiKey": "USE_VARIAVEL_DE_AMBIENTE"
   },
   "Google": {
     "MapsApiKey": "USE_VARIAVEL_DE_AMBIENTE"
   },
   "Cors": {
-    "AllowedOrigins": "http://localhost:19006"
+    "AllowedOrigins": "http://localhost:8081,http://192.168.1.8:8081,exp://192.168.1.8:8081"
   }
 }
 ```
@@ -216,8 +219,10 @@ source ~/.bashrc
 ### 1️⃣ Clone do Repositório
 
 ```bash
-git clone https://github.com/seu-usuario/airwatch-systems.git
-cd airwatch-systems/airwatch-api
+mkdir airwatch-systems/ # Se não criou ainda
+cd airwatch-systems
+git clone https://github.com/AirWatch-Systems/airwatch-api.git
+cd airwatch-api
 ```
 
 ### 2️⃣ Instalação de Ferramentas
@@ -402,10 +407,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 - Código 2FA aparece no log do servidor
 - Não requer configuração adicional
 
-**Modo Produção:**
-- Configure `FIREBASE_CREDENTIALS` para envio via push/SMS
-- Integre com serviços de notificação
-
 ## 🔗 Integrações Externas
 
 ### 🌤️ OpenWeatherMap API
@@ -436,16 +437,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 - Busca de endereços por texto
 - Conversão coordenadas ↔ endereços
 - Sugestões de localização
-
-### 🔥 Firebase (Opcional)
-
-```bash
-# Configurar Firebase
-1. Acesse: https://console.firebase.google.com/
-2. Crie um projeto
-3. Gere Service Account Key
-4. Configure: FIREBASE_CREDENTIALS
-```
 
 ## 📦 Deploy
 
@@ -590,7 +581,6 @@ Para problemas não resolvidos:
 | `Swashbuckle.AspNetCore` | 6.5.0 | Documentação Swagger |
 | `BCrypt.Net-Next` | 4.0.3 | Criptografia de senhas |
 | `Serilog.AspNetCore` | 7.0.0 | Sistema de logs |
-| `FirebaseAdmin` | 2.4.0 | Integração Firebase |
 
 ### 🔧 Ferramentas de Desenvolvimento
 
