@@ -5,14 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using AirWatch.Api.DTOs.Location;
 using Microsoft.Extensions.Configuration;
+using AirWatch.Api.Services.Interfaces;
 
 namespace AirWatch.Api.Services
 {
-    public interface IGoogleMapsGeocodingService
-    {
-        Task<List<LocationResultDto>> SearchAsync(string query, CancellationToken ct);
-    }
-
     public class GoogleMapsGeocodingService : IGoogleMapsGeocodingService
     {
         private readonly HttpClient _httpClient;
