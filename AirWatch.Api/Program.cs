@@ -8,6 +8,7 @@ using Serilog.Events;
 using AirWatch.Api;
 using AirWatch.Api.Repositories;
 using AirWatch.Api.Services;
+using AirWatch.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 

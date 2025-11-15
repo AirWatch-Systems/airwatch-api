@@ -6,6 +6,7 @@ using AirWatch.Api.DTOs.Common;
 using AirWatch.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AirWatch.Api.Services.Interfaces;
 
 namespace AirWatch.Api.Controllers
 {

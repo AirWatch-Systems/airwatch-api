@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AirWatch.Api.DTOs.Location;
 using AirWatch.Api.Services;
+using AirWatch.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
